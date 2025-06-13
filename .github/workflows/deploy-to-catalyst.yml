@@ -20,4 +20,5 @@ jobs:
         ssh_host_public_key: ${{ secrets.DEPLOY_PUBLIC_KEY }}
         ssh_jump_host: ${{ secrets.DEPLOY_HOST }}
         ssh_jump_public_key: ${{ secrets.DEPLOY_PUBLIC_KEY }}
+        ssh_port: 22
         docker_compose_prefix: myapp
