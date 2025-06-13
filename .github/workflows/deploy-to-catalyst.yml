@@ -12,7 +12,7 @@ jobs:
     - uses: astappiev/docker-compose-remote-action@master
       name: Docker-Compose Remote Deployment
       with:
-        ssh_host: example.com
+        ssh_host: ${{ secrets.DEPLOY_HOST }}
         ssh_user: ${{ secrets.DEPLOY_USERNAME }}
         ssh_private_key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
         ssh_host_public_key: ${{ secrets.DEPLOY_PUBLIC_KEY }}
