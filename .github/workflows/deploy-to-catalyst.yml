@@ -7,6 +7,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: 
+      name: deploy-formbricks-dev
     steps:
     - uses: actions/checkout@v3
     - uses: astappiev/docker-compose-remote-action@master
