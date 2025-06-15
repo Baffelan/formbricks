@@ -1,24 +1,75 @@
-name: Deploy
+# name: Deploy
+
+# on:
+#   push:
+#     branches: [ main, develop]
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     environment: 
+#       name: deploy-formbricks-dev
+#     steps:
+#     - uses: actions/checkout@v3
+#     - uses: astappiev/docker-compose-remote-action@master
+#       name: Docker-Compose Remote Deployment
+#       with:
+#         ssh_host: ${{ secrets.DEPLOY_HOST }}
+#         ssh_user: ${{ secrets.DEPLOY_USERNAME }}
+#         ssh_private_key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
+#         ssh_host_public_key: ${{ secrets.DEPLOY_PUBLIC_KEY }}
+#         ssh_jump_host: ${{ secrets.DEPLOY_HOST }}
+#         ssh_jump_public_key: ${{ secrets.DEPLOY_PUBLIC_KEY }}
+#         ssh_port: 22
+#         docker_compose_prefix: myapp
+name: Docker Image CI
 
 on:
   push:
-    branches: [ main, develop]
+    branches: [ "main" ]
 
 jobs:
+  build-push-image:
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      date: ${{ steps.date.outputs.date }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get current date # get the date of the build
+        id: date
+        run: echo "::set-output name=date::$(date +%s)"
+      - name: Build the Docker image
+        run: docker build . --file Dockerfile  --tag ghcr.io/replace-me-org/replace-me-image-name:${{ steps.date.outputs.date }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.READ_GITHUB_TOKEN }}
+      - name: Push the Docker image to the GitHub registry
+        run: docker push ghcr.io/replace-me-org/replace-me-image-name:${{ steps.date.outputs.date }}
+
   deploy:
     runs-on: ubuntu-latest
-    environment: 
-      name: deploy-formbricks-dev
+    needs: build-push-image
+
     steps:
-    - uses: actions/checkout@v3
-    - uses: astappiev/docker-compose-remote-action@master
-      name: Docker-Compose Remote Deployment
-      with:
-        ssh_host: ${{ secrets.DEPLOY_HOST }}
-        ssh_user: ${{ secrets.DEPLOY_USERNAME }}
-        ssh_private_key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
-        ssh_host_public_key: ${{ secrets.DEPLOY_PUBLIC_KEY }}
-        ssh_jump_host: ${{ secrets.DEPLOY_HOST }}
-        ssh_jump_public_key: ${{ secrets.DEPLOY_PUBLIC_KEY }}
-        ssh_port: 22
-        docker_compose_prefix: myapp
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
+
+      - name: Add remote server to known_hosts
+        run: |
+                    ssh-keyscan user@remote_server >> ~/.ssh/known_hosts    # Replace user@remote_server
+
+      - name: Deploy to server
+        run: |
+          ssh user@remote_server << 'EOF'                         # Replace user@remote_server
+            cd <REPLACE_ME_WITH_DOCKER_COMPOSE_FOLDER>            # Replace with your Docker Compose folder
+            sed -i 's/^DOCKER_TAG=.*/DOCKER_TAG=${{ needs.build-push-image.outputs.date }}/' .env
+            docker compose up -d
+          EOF          
